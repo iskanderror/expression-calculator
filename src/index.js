@@ -6,7 +6,7 @@ function eval() {
 }
 
 const separatorsExpr = /[-+/*()]/g;
-const precedence = {'*' : 3,  '/' : 3,  '+' : 1,  '-' : 2 };
+const precedence = {'*' : 3,  '/' : 3,  '+' : 2,  '-' : 2 };
 /*association array not needed because all operations are left-associative*/
 
 
@@ -34,39 +34,53 @@ function computeRPN(postfixExpr) {
   return args[0];
 }
 
-/* Implements a shunting yard algorithm */
+/* Implements a shunting yard algorithm https://en.wikipedia.org/wiki/Shunting-yard_algorithm*/
 /* 
-While there are tokens to be read:
-1. Read a token. Let’s call it t
-2. If t is a Variable, push it to the output queue.
-3. If t is an Operator:
-  a. while there is an Operator token o at the top of the operator stack and either t is left-associative (all of us) and has precedence is less than or equal to that of o, 
-    or t is right associative (none, not implemented), and has precedence less than that of o, pop o off the operator stack, onto the output queue;
-  b. at the end of iteration push t onto the operator stack.
-6. If the token is a Left Parenthesis, push it onto the stack.
-7. If the token is a Right Parenthesis, pop operators off the stack onto the output queue until the token at the top of the stack is a left parenthesis. 
-    Then pop the left parenthesis from the stack, but not onto the output queue.
-When there are no more tokens to read, pop any Operator tokens on the stack onto the output queue.
+/* This implementation does not implement composite functions,functions with variable number of arguments, and unary operators. */
+/*
+/* while there are tokens to be read do:
+/*     read a token.
+/*     if the token is a number, then:
+/*         push it to the output queue.
+/*     if the token is a function then:
+/*         push it onto the operator stack 
+/*     if the token is an operator, then:
+/*         while ((there is a function at the top of the operator stack)
+/*                or (there is an operator at the top of the operator stack with greater precedence)
+/*                or (the operator at the top of the operator stack has equal precedence and is left associative))
+/*               and (the operator at the top of the operator stack is not a left parenthesis):
+/*             pop operators from the operator stack onto the output queue.
+/*         push it onto the operator stack.
+/*     if the token is a left paren (i.e. "("), then:
+/*         push it onto the operator stack.
+/*     if the token is a right paren (i.e. ")"), then:
+/*         while the operator at the top of the operator stack is not a left paren:
+/*             pop the operator from the operator stack onto the output queue.
+/*         /* if the stack runs out without finding a left paren, then there are mismatched parentheses.*/
+/*         if there is a left paren at the top of the operator stack, then:
+/*             pop the operator from the operator stack and discard it
+/* after while loop, if operator stack not null, pop everything to output queue
+/* if there are no more tokens to read then:
+/*     while there are still operator tokens on the stack:
+/*         /* if the operator token on the top of the stack is a paren, then there are mismatched parentheses.*/
+/*         pop the operator from the operator stack onto the output queue.
+/* exit.
 */
 function tokensToRPN(tokenizedExpr) {
   let operatorsStack=[];
   let outputQueue=[];
   for (let i=0;i<tokenizedExpr.length;i++){
     let token = tokenizedExpr[i];
-    if (precedence[token]!==undefined){
-      for (let j=0; j<operatorsStack.length;j++){
+    if (Object.keys(precedence).includes(token)){
+      if (operatorsStack.length == 0) {
+        operatorsStack.push(token);
+        continue;
+      }
+      let tokenPrecedence = precedence[token];
+      while ( (precedence[operatorsStack[operatorsStack.length-1]] >= tokenPrecedence) && 
+              (operatorsStack[operatorsStack.length-1] != '(' )){
         let topToken = operatorsStack.pop();
-        if (precedence[topToken]===undefined) {
-          operatorsStack.push(topToken);
-          break;
-        }
-        if(precedence[token]<=precedence[topToken]){
-          outputQueue.push(topToken);
-        }
-        else {
-          operatorsStack.push(topToken);
-          break;
-        }
+        outputQueue.push(topToken);
       }
       operatorsStack.push(token);
       continue;
@@ -76,25 +90,25 @@ function tokensToRPN(tokenizedExpr) {
       continue;
     }
     if (token == ')'){
-      if (!operatorsStack.includes('(')){ 
+      while ( (operatorsStack.length > 0) && (operatorsStack[operatorsStack.length-1] != '(') ) {
+        let topToken = operatorsStack.pop();
+        outputQueue.push(topToken);
+      }
+      if (operatorsStack.length == 0) {
         throw new Error("ExpressionError: Brackets must be paired");
       }
-      for (let j=0; j<operatorsStack.length;j++){
-        let topToken = operatorsStack.pop();
-        if (topToken == '(') {
-          break;
-        }
-        outputQueue.push(topToken);
+      if (operatorsStack[operatorsStack.length-1] == '('){
+        operatorsStack.pop();
       }
       continue;
     }
     outputQueue.push(token);
   }
-  if (operatorsStack.includes('(')){ 
-    throw new Error("ExpressionError: Brackets must be paired");
-  }
   while (operatorsStack.length>0){
     let topToken = operatorsStack.pop();
+    if (topToken == '('){ 
+      throw new Error("ExpressionError: Brackets must be paired");
+    }
     outputQueue.push(topToken);
   }
   return outputQueue;
@@ -125,6 +139,4 @@ function tokenize (expr){
 }
 
 
-//module.exports = {expressionCalculator}
-
-expressionCalculator( " 20 - 57 * 12 - (  58 + 84 * 32 / 27  ) ");
+module.exports = {expressionCalculator}
