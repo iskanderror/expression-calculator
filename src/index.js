@@ -6,7 +6,7 @@ function eval() {
 }
 
 const separatorsExpr = /[-+/*()]/g;
-const precedence = {'*' : 3,  '/' : 3,  '+' : 2,  '-' : 2 };
+const precedence = {'*' : 3,  '/' : 3,  '+' : 1,  '-' : 2 };
 /*association array not needed because all operations are left-associative*/
 
 
@@ -76,7 +76,9 @@ function tokensToRPN(tokenizedExpr) {
       continue;
     }
     if (token == ')'){
-      /*if operatorsStack not contains '(' throw an error */
+      if (!operatorsStack.includes('(')){ 
+        throw new Error("ExpressionError: Brackets must be paired");
+      }
       for (let j=0; j<operatorsStack.length;j++){
         let topToken = operatorsStack.pop();
         if (topToken == '(') {
@@ -88,8 +90,10 @@ function tokensToRPN(tokenizedExpr) {
     }
     outputQueue.push(token);
   }
-  /*if operatorsStack contains '(' throw an error */
-  for (let j=0; j<operatorsStack.length;j++){
+  if (operatorsStack.includes('(')){ 
+    throw new Error("ExpressionError: Brackets must be paired");
+  }
+  while (operatorsStack.length>0){
     let topToken = operatorsStack.pop();
     outputQueue.push(topToken);
   }
@@ -103,6 +107,9 @@ function computeBinary (arg1,arg2, operator){
     case '-':
       return Number(arg1) - Number(arg2);
     case '/':
+      if(Number(arg2)==0) {
+        throw new TypeError("TypeError: Division by zero.");
+      }
       return Number(arg1)/Number(arg2);
     case '*':
       return Number(arg1)*Number(arg2);
@@ -120,4 +127,4 @@ function tokenize (expr){
 
 //module.exports = {expressionCalculator}
 
-expressionCalculator("(  73 + 85 + 64 / 17  ) * 17 + 31 / 60");
+expressionCalculator( " 20 - 57 * 12 - (  58 + 84 * 32 / 27  ) ");
